@@ -82,6 +82,7 @@ Sports Statistics/
 
 ## Author
 Utkarsh Dilip Pardhi
+GitHub: https://github.com/UtkarshPardhi
 
 ## Note
 This project is built for learning and demonstration purposes.

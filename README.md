@@ -81,7 +81,7 @@ Sports Statistics/
 ➡️Build a resume-ready application
 
 ## Author
-Utkarsh Dilip Pardhi
+**Utkarsh Dilip Pardhi**
 GitHub: https://github.com/UtkarshPardhi
 
 ## Note

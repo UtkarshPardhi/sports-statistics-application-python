@@ -1,0 +1,119 @@
+<!-- templates/football.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Football Stats</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-4">Football Stats</h1>
+
+        <!-- Player Form -->
+        <form id="playerForm" class="mb-6 bg-white p-4 rounded shadow">
+            <input type="hidden" id="playerId">
+            <div class="flex gap-4">
+                <input type="text" id="name" placeholder="Name" required class="border p-2 flex-1">
+                <input type="text" id="team" placeholder="Team" required class="border p-2 flex-1">
+                <input type="number" id="goals" placeholder="Goals" required class="border p-2 w-24">
+                <input type="number" id="assists" placeholder="Assists" required class="border p-2 w-24">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+            </div>
+        </form>
+
+        <!-- Player List -->
+        <div id="players" class="space-y-2 mb-6"></div>
+
+        <!-- Chart -->
+        <canvas id="goalsChart" height="100"></canvas>
+    </div>
+
+    <script>
+        let chart;
+
+        const renderChart = (players) => {
+            const labels = players.map(p => p.name);
+            const goals = players.map(p => p.stats.goals || 0);
+
+            if (chart) chart.destroy();
+
+            chart = new Chart(document.getElementById('goalsChart'), {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Goals',
+                        data: goals,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        };
+
+        const loadPlayers = async () => {
+            const res = await axios.get('/get_players/football');
+            const players = res.data;
+            const list = document.getElementById('players');
+            list.innerHTML = '';
+            players.forEach(p => {
+                list.innerHTML += `
+                    <div class="bg-white p-3 rounded shadow flex justify-between items-center">
+                        <div><strong>${p.name}</strong> - ${p.team} | Goals: ${p.stats?.goals || 0} | Assists: ${p.stats?.assists || 0}</div>
+                        <div class="space-x-2">
+                            <button onclick="editPlayer('${p._id}', '${p.name}', '${p.team}', ${p.stats?.goals || 0}, ${p.stats?.assists || 0})" class="text-blue-600">Edit</button>
+                            <button onclick="deletePlayer('${p._id}')" class="text-red-600">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            renderChart(players);
+        };
+
+        const editPlayer = (id, name, team, goals, assists) => {
+            document.getElementById('playerId').value = id;
+            document.getElementById('name').value = name;
+            document.getElementById('team').value = team;
+            document.getElementById('goals').value = goals;
+            document.getElementById('assists').value = assists;
+        };
+
+        const deletePlayer = async (id) => {
+            await axios.delete(`/delete_player/${id}`);
+            loadPlayers();
+        };
+
+        document.getElementById('playerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('playerId').value;
+            const data = {
+                name: document.getElementById('name').value,
+                team: document.getElementById('team').value,
+                stats: {
+                    goals: parseInt(document.getElementById('goals').value),
+                    assists: parseInt(document.getElementById('assists').value)
+                }
+            };
+
+            if (id) {
+                await axios.put(`/update_player/${id}`, data);
+            } else {
+                await axios.post('/add_player/football', data);
+            }
+
+            e.target.reset();
+            loadPlayers();
+        });
+
+        loadPlayers();
+    </script>
+</body>
+</html>

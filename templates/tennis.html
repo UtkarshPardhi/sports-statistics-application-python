@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tennis Stats</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-4">Tennis Stats</h1>
+
+        <!-- Player Form -->
+        <form id="playerForm" class="mb-6 bg-white p-4 rounded shadow">
+            <input type="hidden" id="playerId">
+            <div class="flex gap-4 flex-wrap">
+                <input type="text" id="name" placeholder="Name" required class="border p-2 flex-1">
+                <input type="text" id="team" placeholder="Team" required class="border p-2 flex-1">
+                <input type="number" id="aces" placeholder="Aces" required class="border p-2 w-24">
+                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Save</button>
+            </div>
+        </form>
+
+        <!-- Player List -->
+        <div id="players" class="space-y-2 mb-6"></div>
+
+        <!-- Chart -->
+        <canvas id="acesChart" height="100"></canvas>
+    </div>
+
+    <script>
+        let acesChart;
+
+        const renderChart = (players) => {
+            const labels = players.map(p => p.name);
+            const aces = players.map(p => p.stats.aces || 0);
+
+            if (acesChart) acesChart.destroy();
+
+            acesChart = new Chart(document.getElementById('acesChart'), {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Aces',
+                        data: aces,
+                        backgroundColor: 'rgba(153, 102, 255, 0.6)',
+                        maxBarThickness: 40,
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        };
+
+        const loadPlayers = async () => {
+            const res = await axios.get('/get_players/tennis');
+            const players = res.data;
+            const list = document.getElementById('players');
+            list.innerHTML = '';
+            players.forEach(p => {
+                list.innerHTML += `
+                    <div class="bg-white p-3 rounded shadow flex justify-between items-center">
+                        <div>
+                            <strong>${p.name}</strong> - ${p.team} | Aces: ${p.stats?.aces || 0}
+                        </div>
+                        <div class="space-x-2">
+                            <button onclick="editPlayer('${p._id}', '${p.name}', '${p.team}', ${p.stats?.aces || 0})" class="text-blue-600">Edit</button>
+                            <button onclick="deletePlayer('${p._id}')" class="text-red-600">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            renderChart(players);
+        };
+
+        const editPlayer = (id, name, team, aces) => {
+            document.getElementById('playerId').value = id;
+            document.getElementById('name').value = name;
+            document.getElementById('team').value = team;
+            document.getElementById('aces').value = aces;
+        };
+
+        const deletePlayer = async (id) => {
+            await axios.delete(`/delete_player/${id}`);
+            loadPlayers();
+        };
+
+        document.getElementById('playerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('playerId').value;
+            const data = {
+                name: document.getElementById('name').value,
+                team: document.getElementById('team').value,
+                stats: {
+                    aces: parseInt(document.getElementById('aces').value)
+                }
+            };
+
+            if (id) {
+                await axios.put(`/update_player/${id}`, data);
+            } else {
+                await axios.post('/add_player/tennis', data);
+            }
+
+            e.target.reset();
+            loadPlayers();
+        });
+
+        loadPlayers();
+    </script>
+</body>
+</html>

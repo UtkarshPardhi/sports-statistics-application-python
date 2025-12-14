@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cricket Stats</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-4">Cricket Stats</h1>
+
+        <!-- Player Form -->
+        <form id="playerForm" class="mb-6 bg-white p-4 rounded shadow">
+            <input type="hidden" id="playerId">
+            <div class="flex gap-4">
+                <input type="text" id="name" placeholder="Name" required class="border p-2 flex-1">
+                <input type="text" id="team" placeholder="Team" required class="border p-2 flex-1">
+                <input type="number" id="runs" placeholder="Runs" required class="border p-2 w-24">
+                <input type="number" id="wickets" placeholder="Wickets" required class="border p-2 w-24">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+            </div>
+        </form>
+
+        <!-- Player List -->
+        <div id="players" class="space-y-2 mb-6"></div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            <div class="bg-white rounded shadow p-4">
+                <h2 class="text-xl font-bold mb-4">Runs Chart</h2>
+                <canvas id="runsChart"></canvas>
+            </div>
+            <div class="bg-white rounded shadow p-4">
+                <h2 class="text-xl font-bold mb-4">Wickets Chart</h2>
+                <canvas id="wicketsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let runsChart, wicketsChart;
+
+        const renderCharts = (players) => {
+            const labels = players.map(p => p.name);
+            const runs = players.map(p => p.stats.runs || 0);
+            const wickets = players.map(p => p.stats.wickets || 0);
+
+            if (runsChart) runsChart.destroy();
+            if (wicketsChart) wicketsChart.destroy();
+
+            const runsCtx = document.getElementById('runsChart');
+            const wicketsCtx = document.getElementById('wicketsChart');
+
+            runsChart = new Chart(runsCtx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Runs',
+                        data: runs,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            wicketsChart = new Chart(wicketsCtx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Wickets',
+                        data: wickets,
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        };
+
+        const loadPlayers = async () => {
+            const res = await axios.get('/get_players/cricket');
+            const players = res.data;
+            const list = document.getElementById('players');
+            list.innerHTML = '';
+            players.forEach(p => {
+                list.innerHTML += `
+                    <div class="bg-white p-3 rounded shadow flex justify-between items-center">
+                        <div>
+                            <strong>${p.name}</strong> - ${p.team} |
+                            Runs: ${p.stats?.runs || 0},
+                            Wickets: ${p.stats?.wickets || 0}
+                        </div>
+                        <div class="space-x-2">
+                            <button onclick="editPlayer('${p._id}', '${p.name}', '${p.team}', ${p.stats?.runs || 0}, ${p.stats?.wickets || 0})" class="text-blue-600">Edit</button>
+                            <button onclick="deletePlayer('${p._id}')" class="text-red-600">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            renderCharts(players);
+        };
+
+        const editPlayer = (id, name, team, runs, wickets) => {
+            document.getElementById('playerId').value = id;
+            document.getElementById('name').value = name;
+            document.getElementById('team').value = team;
+            document.getElementById('runs').value = runs;
+            document.getElementById('wickets').value = wickets;
+        };
+
+        const deletePlayer = async (id) => {
+            await axios.delete(`/delete_player/${id}`);
+            loadPlayers();
+        };
+
+        document.getElementById('playerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('playerId').value;
+            const data = {
+                name: document.getElementById('name').value,
+                team: document.getElementById('team').value,
+                stats: {
+                    runs: parseInt(document.getElementById('runs').value),
+                    wickets: parseInt(document.getElementById('wickets').value)
+                }
+            };
+
+            if (id) {
+                await axios.put(`/update_player/${id}`, data);
+            } else {
+                await axios.post('/add_player/cricket', data);
+            }
+
+            e.target.reset();
+            loadPlayers();
+        });
+
+        loadPlayers();
+    </script>
+</body>
+</html>

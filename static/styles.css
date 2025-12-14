@@ -1,0 +1,7 @@
+/* Reduce the size of both charts */
+#teamRunsChart, #playerWicketsChart {
+    max-width: 400px;  /* Adjust width */
+    max-height: 300px; /* Adjust height */
+    margin: auto; /* Center the charts */
+    display: block;
+}
